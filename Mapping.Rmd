@@ -1,0 +1,235 @@
+---
+title: "Data"
+author: "Ghada Amer"
+date: "July 31, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+library(shiny)
+library(tidyverse)
+library(tidytext)
+library(ggplot2)
+library(shinythemes)
+library(leaflet)
+library(RColorBrewer)
+library(leaflet.extras)
+library(DT)
+library(scales)
+library(knitr)
+library(formattable)
+library(janitor)
+library(readr)
+library(dplyr)
+library(devtools)
+library(dplyr)
+library(readxl)
+library(ggthemes)
+library(gganimate)
+library(gifski)
+
+```
+
+```{r}
+
+countries_mapping <- read_excel("countries_mapping_1.xlsx")
+country_coords <- read_excel("country_georeferenced.xlsx")
+country_programs <- read_excel("Locations_Compiled.xlsx")
+JM <- read_excel("JM.xlsx")
+
+```
+
+
+```{r}
+
+  
+ CP <-
+      country_programs %>% 
+      filter(Type == "Country Office/DRC")
+
+DRC <-
+      country_programs %>% 
+      filter(Type == "Defender Resource Center")
+ 
+SDRC <-
+      country_programs %>% 
+      filter(Type == "Satellite Defender Resource Center")
+
+eLearning <- 
+   countries_mapping %>% 
+      select("admin" = "eLearning") %>% 
+      na.omit()
+
+eLearning_geo <-
+  eLearning %>% 
+  left_join(country_coords, by = "admin")  
+
+defense_wiki <- 
+   countries_mapping %>% 
+      select("admin"= "DefenseWiki") %>% 
+      na.omit()
+
+defense_wiki_geo <-
+  defense_wiki %>% 
+  left_join(country_coords, by = "admin")  
+
+training_projects <-
+   countries_mapping %>% 
+      select("admin"= "Training") %>% 
+      na.omit()
+
+training_geo <-
+  training_projects %>% 
+  left_join(country_coords, by = "admin") 
+
+```
+
+
+
+```{r}
+icons <- awesomeIcons(
+  icon = 'ion-school',
+  iconColor = 'blue',
+  library = 'ion')
+  
+  
+      activity_palette <- 
+      colorFactor(palette = "Blues", 
+                  levels =  c("Country Office/DRC",
+                          "Defender Resource Center (DRC)",
+                          "Satellite Defender Resource Center",
+                           "JusticeMaker Fellows",
+                           "eLearning Resources Only",
+                        "DefenseWiki Only",
+                        "Training Projects Only"))
+      
+map <-  
+     leaflet(options = leafletOptions(minZoom = 2)) %>% 
+      addProviderTiles("CartoDB.Positron") %>% 
+      setMaxBounds(lng1 = 180 ,
+                   lat1 = 90, 
+                   lng2 = -180, 
+                   lat2 = -90) %>% 
+      addMarkers(lng = CP$Long, 
+                       lat = CP$Lat,
+                       group = "Country Office/DRC",
+                 icon = icons, 
+                       label = paste0(CP$Name),
+                       popup = paste0("Type: ", DRC$Type,".", " ",
+                                      "Year of Establishment: ", CP$`Date of Establishment`,
+                                           "."," ",
+                                          "Location: ", CP$City, ",", CP$Country, " ",
+                                          "Address: ",  CP$Address, "."," "),
+                       clusterOptions = markerClusterOptions(),
+                       labelOptions = labelOptions(noHide = T, 
+                                                   textsize = "10px", 
+                                                   direction = "auto",
+                                                   opaicty = 0.75,
+                                                   interactive = TRUE)) %>%
+  addMarkers(lng = DRC$Long, 
+                       lat = DRC$Lat,
+                       group = "Defender Resource Center (DRC)",
+                 icon = icons, 
+                       label = paste0(DRC$Name),
+                       popup = paste0("Type: ", DRC$Type,".", " ",
+                         "Year of Establishment: ", DRC$`Date of Establishment`,
+                                           "."," ",
+                                          "Location: ", DRC$City, ",", DRC$Country, "."," "),
+                       clusterOptions = markerClusterOptions(),
+                       labelOptions = labelOptions(noHide = T, 
+                                                   textsize = "10px", 
+                                                   direction = "auto",
+                                                   opaicty = 0.75,
+                                                   interactive = TRUE)) %>%
+  addMarkers(lng = SDRC$Long, 
+                       lat = SDRC$Lat,
+                       group = "Satellite Defender Resource Center",
+                 icon = icons, 
+                       label = paste0(SDRC$Name),
+                       popup = paste0("Type: ", DRC$Type,".", " ",
+                                      "Year of Establishment: ", SDRC$`Date of Establishment`,
+                                           "."," ",
+                                          "Location: ", SDRC$City, ",", SDRC$Country, "."," "),
+                       clusterOptions = markerClusterOptions(),
+                       labelOptions = labelOptions(noHide = T, 
+                                                   textsize = "10px", 
+                                                   direction = "auto",
+                                                   opaicty = 0.75,
+                                                   interactive = TRUE)) %>%
+  addCircleMarkers(lng = JM$Long, 
+                       lat = JM$Lat,
+                       group = "JusticeMaker Fellows",
+                       radius = 5) %>% 
+      addCircleMarkers(lng = eLearning_geo$Latitude, 
+                       lat = eLearning_geo$Longitude,
+                       group = "eLearning Resources Only",
+                       radius = 5, 
+                       label = paste0(eLearning_geo$admin),
+                       clusterOptions = markerClusterOptions(),
+                       labelOptions = labelOptions(noHide = F, 
+                                                   textsize = "10px", 
+                                                   direction = "auto",
+                                                   opaicty = 0.75,
+                                                   interactive = TRUE)) %>% 
+  addCircleMarkers(lng = defense_wiki_geo$Latitude, 
+                       lat = defense_wiki_geo$Longitude,
+                       group = "DefenseWiki Only",
+                       radius = 5, 
+                       label = paste0(defense_wiki_geo$admin),
+                    clusterOptions = markerClusterOptions(),
+                       labelOptions = labelOptions(noHide = F, 
+                                                   textsize = "10px", 
+                                                   direction = "auto",
+                                                   opaicty = 0.75,
+                                                   interactive = TRUE)) %>%
+   addCircleMarkers(lng = training_geo$Latitude, 
+                       lat = training_geo$Longitude,
+                       group = "Training Projects Only",
+                       radius = 5, 
+                       label = paste0(defense_wiki_geo$admin),
+                    clusterOptions = markerClusterOptions(),
+                       labelOptions = labelOptions(noHide = F, 
+                                                   textsize = "10px", 
+                                                   direction = "auto",
+                                                   opaicty = 0.75,
+                                                   interactive = TRUE)) %>%
+   addLegend(pal = activity_palette,
+     values = c("Country Office/DRC",
+                          "Defender Resource Center (DRC)",
+                          "Satellite Defender Resource Center",
+                           "JusticeMaker Fellows",
+                           "eLearning Resources Only",
+                        "DefenseWiki Only",
+                        "Training Projects Only"),
+                opacity = 0.7,
+                title = "Type of IBJ Activity",
+                position = "bottomright") %>% 
+      addSearchFeatures(targetGroups = 
+                             c("Country Office/DRC",
+                          "Defender Resource Center (DRC)",
+                          "Satellite Defender Resource Center",
+                           "JusticeMaker Fellows",
+                           "eLearning Resources Only",
+                        "DefenseWiki Only",
+                        "Training Projects Only")) %>% 
+  
+      addSearchOSM() %>%  
+      addResetMapButton()
+    
+    
+  map %>% 
+          addLayersControl(
+                       overlayGroups = 
+                        c("Country Office/DRC",
+                          "Defender Resource Center (DRC)",
+                          "Satellite Defender Resource Center",
+                           "JusticeMaker Fellows",
+                           "eLearning Resources Only",
+                        "DefenseWiki Only",
+                        "Training Projects Only")) 
+
+```
+
